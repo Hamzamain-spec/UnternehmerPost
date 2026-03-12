@@ -193,7 +193,7 @@ footer{background:var(--ink);margin-top:60px}
       <a href="index.html" class="see-all">Alle anzeigen →</a>
     </div>
     <div id="articles-list">
-      <div class="empty-state"><h3>Noch keine Artikel</h3><p>Inhalte erscheinen in Kürze. Erstelle deinen ersten Artikel im Admin-Bereich.</p></div>
+      <div class="empty-state"><h3>Artikel werden geladen...</h3><p>Bitte warten Sie einen Moment.</p></div>
     </div>
   </div>
   <aside class="sidebar">
@@ -226,45 +226,124 @@ footer{background:var(--ink);margin-top:60px}
   <div class="footer-bottom"><span>&copy; 2026 UnternehmerPost — Wissen für Unternehmer</span><div><a href="#">Impressum</a><a href="#">Datenschutz</a></div></div>
 </footer>
 <a href="admin.html" class="admin-link">⚙ Admin</a>
+
 <script>
-const bgs=['bg1','bg2','bg3','bg4','bg5','bg6'];
-const catColors=['','orange','','orange','','orange'];
-function loadPosts(){
-  const posts=JSON.parse(localStorage.getItem('db_posts')||'[]').slice().reverse();
-  const list=document.getElementById('articles-list'),st=document.getElementById('sidebar-top');
-  if(!posts.length)return;
-  list.innerHTML='';
-  posts.forEach((p,i)=>{
-    const bg=bgs[i%bgs.length];
-    const date=new Date(p.date).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'});
-    const excerpt=p.content.replace(/<[^>]+>/g,'').substring(0,120)+'...';
-    const init=(p.author||'R').charAt(0).toUpperCase();
-    const cc=catColors[i%catColors.length];
-    list.innerHTML+=`<div class="article-card" onclick="location.href='post.html?id=${p.id}'">
-      <div class="article-card-img"><div class="article-card-img-bg ${bg}"></div><div class="article-card-img-num">${i+1}</div></div>
+const bgs = ['bg1','bg2','bg3','bg4','bg5','bg6'];
+const catColors = ['', 'orange', '', 'orange', '', 'orange'];
+const SITE_NAME = 'unternehmerpost';
+const GIST_ID = '42ea11087f40fdba423f8eb0f575ac96'; // Same Gist for all sites!
+
+async function loadPosts() {
+  const list = document.getElementById('articles-list');
+  const st = document.getElementById('sidebar-top');
+  
+  try {
+    console.log('Fetching from Gist ID:', GIST_ID);
+    
+    const rawUrl = `https://gist.githubusercontent.com/Hamzamain-spec/${GIST_ID}/raw/posts.json`;
+    const response = await fetch(rawUrl);
+    
+    if (response.ok) {
+      const allPosts = await response.json();
+      console.log('All posts from Gist:', allPosts);
+      
+      // Filter by site name
+      const sitePosts = allPosts.filter(post => post.site === SITE_NAME);
+      console.log(`Found ${sitePosts.length} posts for site: ${SITE_NAME}`);
+      
+      // Sort by date (newest first)
+      const sortedPosts = [...sitePosts].sort((a, b) => new Date(b.date) - new Date(a.date));
+      
+      displayPosts(sortedPosts, list, st);
+    } else {
+      console.error('Failed to fetch from Gist:', response.status);
+      list.innerHTML = '<div class="empty-state"><h3>Fehler beim Laden</h3><p>Bitte später erneut versuchen.</p></div>';
+    }
+  } catch (error) {
+    console.error('Error loading posts:', error);
+    list.innerHTML = '<div class="empty-state"><h3>Fehler</h3><p>' + error.message + '</p></div>';
+  }
+}
+
+function displayPosts(posts, list, st) {
+  if (!posts || posts.length === 0) {
+    list.innerHTML = '<div class="empty-state"><h3>Noch keine Artikel</h3><p>Inhalte erscheinen in Kürze. Erstelle deinen ersten Artikel im Admin-Bereich.</p></div>';
+    st.innerHTML = '';
+    return;
+  }
+  
+  list.innerHTML = '';
+  
+  posts.forEach((p, i) => {
+    const bg = bgs[i % bgs.length];
+    const date = new Date(p.date).toLocaleDateString('de-DE', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    const excerpt = p.content.replace(/<[^>]+>/g, '').substring(0, 120) + '...';
+    const init = (p.author || 'R').charAt(0).toUpperCase();
+    const cc = catColors[i % catColors.length];
+    
+    const card = document.createElement('div');
+    card.className = 'article-card';
+    card.onclick = () => location.href = `post.html?id=${p.id}`;
+    
+    card.innerHTML = `
+      <div class="article-card-img">
+        <div class="article-card-img-bg ${bg}"></div>
+        <div class="article-card-img-num">${i + 1}</div>
+      </div>
       <div class="article-card-body">
         <div>
-          <div class="article-card-meta"><span class="meta-cat ${cc}">${p.category||'Wirtschaft'}</span><span class="meta-date">${date}</span></div>
+          <div class="article-card-meta">
+            <span class="meta-cat ${cc}">${p.category || 'Wirtschaft'}</span>
+            <span class="meta-date">${date}</span>
+          </div>
           <div class="article-card-title">${p.title}</div>
           <div class="article-card-excerpt">${excerpt}</div>
         </div>
         <div class="article-card-footer">
-          <div class="card-author-row"><div class="card-author-avatar">${init}</div><span class="card-author-name">${p.author||'Redaktion'}</span></div>
+          <div class="card-author-row">
+            <div class="card-author-avatar">${init}</div>
+            <span class="card-author-name">${p.author || 'Redaktion'}</span>
+          </div>
           <a class="card-readmore" href="post.html?id=${p.id}">Lesen →</a>
         </div>
-      </div></div>`;
+      </div>
+    `;
+    
+    list.appendChild(card);
   });
+  
   // Sidebar top
-  st.innerHTML='';
-  posts.slice(0,4).forEach((p,i)=>{
-    const date=new Date(p.date).toLocaleDateString('de-DE');
-    st.innerHTML+=`<div class="side-article" onclick="location.href='post.html?id=${p.id}'">
-      <div class="side-num">0${i+1}</div>
-      <div><div class="side-info-cat">${p.category||'Wirtschaft'}</div><div class="side-info-title">${p.title}</div><div class="side-info-date">${date}</div></div>
-    </div>`;
+  st.innerHTML = '';
+  posts.slice(0, 4).forEach((p, i) => {
+    const date = new Date(p.date).toLocaleDateString('de-DE');
+    const sideItem = document.createElement('div');
+    sideItem.className = 'side-article';
+    sideItem.onclick = () => location.href = `post.html?id=${p.id}`;
+    
+    sideItem.innerHTML = `
+      <div class="side-num">0${i + 1}</div>
+      <div>
+        <div class="side-info-cat">${p.category || 'Wirtschaft'}</div>
+        <div class="side-info-title">${p.title}</div>
+        <div class="side-info-date">${date}</div>
+      </div>
+    `;
+    
+    st.appendChild(sideItem);
   });
+  
+  console.log(`Displayed ${posts.length} posts`);
 }
+
+// Load posts when page loads
 loadPosts();
+
+// Auto-refresh every 30 seconds
+setInterval(loadPosts, 30000);
 </script>
 </body>
 </html>
