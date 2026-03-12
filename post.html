@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Artikel — UnternehmerPost</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--ink:#0F1723;--deep:#1A2535;--card:#FFFFFF;--bg:#F7F8FA;--border:#E4E8F0;--teal:#0D7A6B;--teal-lt:#E6F4F2;--orange:#E85020;--muted:#7A8799;--light:#B0B8C4}
@@ -94,25 +94,74 @@ footer a:hover{color:var(--teal)}
   </aside>
 </div>
 <footer><div class="fl">Unternehmer<span>Post</span></div><p>&copy; 2026 UnternehmerPost &nbsp;|&nbsp;<a href="#">Impressum</a>&nbsp;|&nbsp;<a href="#">Datenschutz</a></p></footer>
+
 <script>
-const params=new URLSearchParams(window.location.search),id=params.get('id');
-const posts=JSON.parse(localStorage.getItem('db_posts')||'[]');
-const post=posts.find(p=>p.id==id);
-if(post){
-  document.title=post.title+' — UnternehmerPost';
-  document.getElementById('post-title').textContent=post.title;
-  document.getElementById('post-cat').textContent=post.category||'Wirtschaft';
-  document.getElementById('post-cat-bc').textContent=post.category||'Wirtschaft';
-  document.getElementById('post-author').textContent=post.author||'Redaktion';
-  document.getElementById('meta-avatar-init').textContent=(post.author||'R').charAt(0).toUpperCase();
-  document.getElementById('post-date').textContent=new Date(post.date).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'});
-  const words=post.content.replace(/<[^>]+>/g,'').split(' ').length;
-  document.getElementById('post-read').textContent=Math.max(1,Math.round(words/200))+' Min. Lesezeit';
-  document.getElementById('article-body').innerHTML=post.content;
-  document.getElementById('post-hero').style.display='block';
-  const rp=document.getElementById('recent-posts');
-  posts.slice().reverse().slice(0,5).forEach(p=>{if(p.id==id)return;rp.innerHTML+=`<div class="recent-item"><div class="ri-cat">${p.category||'Wirtschaft'}</div><div class="ri-title"><a href="post.html?id=${p.id}">${p.title}</a></div><div class="ri-date">${new Date(p.date).toLocaleDateString('de-DE')}</div></div>`;});
-}else{document.getElementById('not-found').style.display='block';}
+const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const SITE_NAME = 'unternehmerpost';
+const GIST_ID = '42ea11087f40fdba423f8eb0f575ac96'; // Same Gist for all sites!
+
+async function loadPost() {
+  try {
+    console.log('Fetching post from Gist ID:', GIST_ID);
+    console.log('Looking for post ID:', id);
+    
+    // Use raw URL
+    const rawUrl = `https://gist.githubusercontent.com/Hamzamain-spec/${GIST_ID}/raw/posts.json`;
+    const response = await fetch(rawUrl);
+    
+    if (response.ok) {
+      const allPosts = await response.json();
+      console.log('All posts:', allPosts);
+      
+      // Filter by site name
+      const sitePosts = allPosts.filter(post => post.site === SITE_NAME);
+      console.log(`Found ${sitePosts.length} posts for site: ${SITE_NAME}`);
+      
+      const post = sitePosts.find(p => p.id == id);
+      console.log('Found post:', post);
+      
+      if (post) {
+        document.title = post.title + ' — UnternehmerPost';
+        document.getElementById('post-title').textContent = post.title;
+        document.getElementById('post-cat').textContent = post.category || 'Wirtschaft';
+        document.getElementById('post-cat-bc').textContent = post.category || 'Wirtschaft';
+        document.getElementById('post-author').textContent = post.author || 'Redaktion';
+        document.getElementById('meta-avatar-init').textContent = (post.author || 'R').charAt(0).toUpperCase();
+        document.getElementById('post-date').textContent = new Date(post.date).toLocaleDateString('de-DE', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+        
+        const words = post.content.replace(/<[^>]+>/g, '').split(' ').length;
+        document.getElementById('post-read').textContent = Math.max(1, Math.round(words / 200)) + ' Min. Lesezeit';
+        
+        document.getElementById('article-body').innerHTML = post.content;
+        document.getElementById('post-hero').style.display = 'block';
+        
+        // Recent posts
+        const rp = document.getElementById('recent-posts');
+        rp.innerHTML = '';
+        sitePosts.slice().reverse().slice(0, 5).forEach(p => {
+          if (p.id == id) return;
+          rp.innerHTML += `<div class="recent-item"><div class="ri-cat">${p.category || 'Wirtschaft'}</div><div class="ri-title"><a href="post.html?id=${p.id}">${p.title}</a></div><div class="ri-date">${new Date(p.date).toLocaleDateString('de-DE')}</div></div>`;
+        });
+      } else {
+        console.log('Post not found for ID:', id);
+        document.getElementById('not-found').style.display = 'block';
+      }
+    } else {
+      console.error('Failed to fetch from Gist:', response.status);
+      document.getElementById('not-found').style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Error loading post:', error);
+    document.getElementById('not-found').style.display = 'block';
+  }
+}
+
+loadPost();
 </script>
 </body>
 </html>
